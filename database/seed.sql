@@ -72,7 +72,10 @@ WITH donnees (
 
     ('diane@example.com', 'Hotel Splendid',
      'Ouagadougou', DATE '2026-11-25',
-     DATE '2026-11-28', 2, 'CONFIRMEE')
+     DATE '2026-11-28', 2, 'CONFIRMEE'),
+     ('judicael@example.com', 'Hotel Splendid',
+ 'Ouagadougou', DATE '2026-11-14',
+ DATE '2026-11-17', 2, 'CONFIRMEE')
 )
 INSERT INTO reservations (
     client_id, hotel_id,
