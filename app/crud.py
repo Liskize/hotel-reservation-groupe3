@@ -70,17 +70,41 @@ def get_pagination():
     return page, min(per_page, cfg["MAX_PER_PAGE"])
 
 
-def register_crud(bp, table, fields, label):
+def get_filters(filters):
+    """filters = {colonne: "text"|"int"} ; text = contient (insensible a la casse), int = egalite."""
+    where, params = [], []
+    for name, kind in filters.items():
+        raw = request.args.get(name)
+        if raw is None:
+            continue
+        if kind == "int":
+            try:
+                value = int(raw)
+            except ValueError:
+                raise ApiError(400, "bad_request", "%s doit etre un entier" % name)
+            if not -MAX_INT <= value <= MAX_INT:
+                raise ApiError(400, "bad_request", "%s hors limites" % name)
+            where.append("%s = %%s" % name)
+            params.append(value)
+        else:
+            escaped = raw.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            where.append("%s ILIKE %%s" % name)
+            params.append("%" + escaped + "%")
+    return ("WHERE " + " AND ".join(where)) if where else "", params
+
+
+def register_crud(bp, table, fields, label, filters=None):
     cols = list(fields.keys())
 
     @bp.get("")
     def list_items():
         page, per_page = get_pagination()
+        clause, params = get_filters(filters or {})
         cur = get_db().cursor()
-        cur.execute("SELECT COUNT(*) AS n FROM " + table)
+        cur.execute("SELECT COUNT(*) AS n FROM %s %s" % (table, clause), params)
         total = cur.fetchone()["n"]
-        cur.execute("SELECT * FROM %s ORDER BY id LIMIT %%s OFFSET %%s" % table,
-                    (per_page, (page - 1) * per_page))
+        cur.execute("SELECT * FROM %s %s ORDER BY id LIMIT %%s OFFSET %%s" % (table, clause),
+                    params + [per_page, (page - 1) * per_page])
         return jsonify({"data": cur.fetchall(), "page": page, "per_page": per_page, "total": total})
 
     @bp.get("/<int:item_id>")
