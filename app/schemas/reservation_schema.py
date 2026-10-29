@@ -2,6 +2,7 @@ from datetime import datetime
 
 STATUTS = {"EN_ATTENTE", "CONFIRMEE", "ANNULEE"}
 STATUT_DEFAUT = "EN_ATTENTE"
+MAX_INT = 2147483647  # INTEGER PostgreSQL
 REQUIRED = ["client_id", "hotel_id", "date_arrivee", "date_depart", "nb_personnes"]
 
 
@@ -13,7 +14,7 @@ class ValidationError(Exception):
 
 
 def _positive_int(value):
-    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+    return isinstance(value, int) and not isinstance(value, bool) and 0 < value <= MAX_INT
 
 
 def _parse_date(value):
@@ -32,7 +33,7 @@ def validate_reservation(data):
     details = {}
     for f in ("client_id", "hotel_id", "nb_personnes"):
         if not _positive_int(data[f]):
-            details[f] = "entier strictement positif attendu"
+            details[f] = f"entier entre 1 et {MAX_INT} attendu"
 
     dates = {}
     for f in ("date_arrivee", "date_depart"):
@@ -41,10 +42,14 @@ def validate_reservation(data):
         except (TypeError, ValueError):
             details[f] = "date invalide, format attendu YYYY-MM-DD"
 
-    statut = data.get("statut") or STATUT_DEFAUT
-    statut = statut.strip().upper() if isinstance(statut, str) else statut
-    if statut not in STATUTS:
+    statut = data.get("statut")
+    if statut is None or statut == "":
+        statut = STATUT_DEFAUT
+    # une liste ou un objet ferait planter le test d'appartenance (TypeError)
+    if not isinstance(statut, str) or statut.strip().upper() not in STATUTS:
         details["statut"] = f"valeur attendue parmi {sorted(STATUTS)}"
+    else:
+        statut = statut.strip().upper()
 
     if details:
         raise ValidationError("Données invalides", details)
