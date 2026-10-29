@@ -56,6 +56,12 @@ def register_error_handlers(app):
         return error_response(422, "validation_error", "Une contrainte de la base n'est pas respectee",
                               {"constraint": e.diag.constraint_name})
 
+    @app.errorhandler(pgerr.NotNullViolation)
+    def handle_not_null(e):
+        col = e.diag.column_name or "champ"
+        return error_response(422, "validation_error", "Champ obligatoire manquant",
+                              {col: "champ obligatoire"})
+
     @app.errorhandler(psycopg2.OperationalError)
     def handle_db_down(e):
         return error_response(503, "database_unavailable", "Base de donnees indisponible")
