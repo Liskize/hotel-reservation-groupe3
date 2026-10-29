@@ -1,0 +1,9 @@
+client_email,hotel_nom,hotel_ville,date_arrivee,date_depart,nb_personnes,statut
+cheicki@example.com,Hotel Splendid,Ouagadougou,2026-11-10,2026-11-14,2,CONFIRMEE
+enock@example.com,Hotel Sonia,Ouagadougou,15/11/2026,18/11/2026,1,EN_ATTENTE
+lareine@example.com,Hotel Sissiman,Bobo-Dioulasso,2026-12-01,2026-12-05,3,CONFIRMEE
+diane@example.com,Hotel Splendid,Ouagadougou,2026-12-10,2026-12-08,2,CONFIRMEE
+,Hotel Sonia,Ouagadougou,2026-12-12,2026-12-15,2,EN_ATTENTE
+judicael@example.com,Hotel Inconnu,Ouagadougou,2026-12-20,2026-12-22,2,CONFIRMEE
+cheicki@example.com,Hotel Splendid,Ouagadougou,2026-11-10,2026-11-14,2,CONFIRMEE
+enock@example.com,Hotel Sonia,Ouagadougou,2026-12-20,2026-12-23,0,CONFIRMEE
