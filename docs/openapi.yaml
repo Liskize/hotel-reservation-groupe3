@@ -10,10 +10,10 @@ info:
 
     | Code | `error` | Cas |
     |---|---|---|
-    | 400 | `bad_request` | Corps JSON absent ou invalide, paramètre de requête mal formé |
+    | 400 | `bad_request` | Corps JSON absent ou invalide, paramètre de requête mal formé, `date_debut` > `date_fin` |
     | 404 | `not_found` | Identifiant inexistant (ou client / hôtel référencé inexistant) |
     | 409 | `conflict` | Doublon (réservation, email client, hôtel nom + ville) ou suppression d'une ressource liée |
-    | 422 | `validation_error` | Champ obligatoire manquant, type ou valeur invalide, `date_depart` <= `date_arrivee` |
+    | 422 | `validation_error` | Champ obligatoire manquant, type ou valeur invalide (entier > 2147483647 compris), `date_depart` <= `date_arrivee` |
     | 503 | `database_unavailable` | Base de données injoignable |
 
     **Pagination** : `page` (défaut 1) et `per_page` (défaut 10, plafonné à 100 : une valeur plus grande est ramenée à 100).
@@ -44,8 +44,12 @@ paths:
   /hotels:
     get:
       tags: [hotels]
-      summary: Liste paginée des hôtels
-      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PerPage"}]
+      summary: Liste paginée et filtrée des hôtels
+      parameters:
+        - {$ref: "#/components/parameters/Page"}
+        - {$ref: "#/components/parameters/PerPage"}
+        - {name: ville, in: query, description: Ville contenant ce texte (insensible à la casse), schema: {type: string}}
+        - {name: etoiles, in: query, description: Nombre d'étoiles exact, schema: {type: integer, minimum: 0, maximum: 5}}
       responses:
         "200":
           description: Page d'hôtels
@@ -110,8 +114,12 @@ paths:
   /clients:
     get:
       tags: [clients]
-      summary: Liste paginée des clients
-      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PerPage"}]
+      summary: Liste paginée et filtrée des clients
+      parameters:
+        - {$ref: "#/components/parameters/Page"}
+        - {$ref: "#/components/parameters/PerPage"}
+        - {name: nom, in: query, description: Nom contenant ce texte (insensible à la casse), schema: {type: string}}
+        - {name: email, in: query, description: Email contenant ce texte (insensible à la casse), schema: {type: string}}
       responses:
         "200":
           description: Page de clients

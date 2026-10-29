@@ -65,7 +65,7 @@ Le modèle de données (3 tables, contraintes, relations) est décrit dans [docs
 - Git
 - Docker Desktop (Windows, macOS) ou Docker Engine (Linux) avec Docker Compose v2 : `docker compose version` doit répondre
 - 4 Go de RAM libres si NiFi est lancé
-- Pour l'installation manuelle et pour pytest : Python 3.12
+- Pour l'installation manuelle et pour pytest : Python 3.12, 3.13 ou 3.14 (`psycopg2-binary` n'a pas encore de version pour Python 3.15)
 - Pour les tests Postman : Postman (application) ou Newman
 
 ## Installation avec Docker (recommandée)
@@ -97,7 +97,7 @@ La première fois, la construction de l'image prend une à deux minutes. Au prem
 
 ```bash
 curl http://127.0.0.1:5000/api/v1/health
-# {"database":"up","status":"ok"}
+# {"status":"ok","database":"up"}
 
 curl "http://127.0.0.1:5000/api/v1/reservations?per_page=2"
 # {"data":[...2 réservations...],"page":1,"per_page":2,"total":10}
@@ -135,9 +135,9 @@ Préfixe : `/api/v1`. Contrat complet : [docs/openapi.yaml](docs/openapi.yaml) (
 | Méthode | Route | Description |
 |---|---|---|
 | GET | `/health` | État de l'API et de la base |
-| GET, POST | `/hotels` | Liste paginée, création |
+| GET, POST | `/hotels` | Liste paginée et filtrée, création |
 | GET, PUT, DELETE | `/hotels/{id}` | Lecture, modification, suppression |
-| GET, POST | `/clients` | Liste paginée, création |
+| GET, POST | `/clients` | Liste paginée et filtrée, création |
 | GET, PUT, DELETE | `/clients/{id}` | Lecture, modification, suppression |
 | GET, POST | `/reservations` | Liste paginée et filtrée, création |
 | GET, PUT, DELETE | `/reservations/{id}` | Lecture, modification, suppression |
@@ -147,10 +147,17 @@ Préfixe : `/api/v1`. Contrat complet : [docs/openapi.yaml](docs/openapi.yaml) (
 **Pagination** : `?page=1&per_page=10` (10 par défaut ; au-delà de 100, la valeur est ramenée à 100).
 Réponse : `{"data": [...], "page": 1, "per_page": 10, "total": 10}`.
 
-**Filtres sur `/reservations`** : `hotel_id`, `client_id`, `statut` (`EN_ATTENTE`, `CONFIRMEE`, `ANNULEE`), `date_debut` (arrivée ≥ cette date) et `date_fin` (départ ≤ cette date), au format `AAAA-MM-JJ`. Ils se combinent :
+**Filtres sur `/reservations`** : `hotel_id`, `client_id`, `statut` (`EN_ATTENTE`, `CONFIRMEE`, `ANNULEE`), `date_debut` (arrivée ≥ cette date) et `date_fin` (départ ≤ cette date), au format `AAAA-MM-JJ` (`date_debut` doit être ≤ `date_fin`). Ils se combinent :
 
 ```bash
 curl "http://127.0.0.1:5000/api/v1/reservations?hotel_id=1&statut=CONFIRMEE&date_debut=2026-11-01&date_fin=2026-11-30"
+```
+
+**Filtres sur `/hotels`** : `ville` (contient, sans tenir compte de la casse) et `etoiles` (valeur exacte). **Sur `/clients`** : `nom` et `email` (contient, sans tenir compte de la casse).
+
+```bash
+curl "http://127.0.0.1:5000/api/v1/hotels?ville=ouaga&etoiles=4"
+curl "http://127.0.0.1:5000/api/v1/clients?nom=some"
 ```
 
 **Créer une réservation** (`statut` est facultatif, `EN_ATTENTE` par défaut) :
@@ -178,10 +185,10 @@ Toutes les erreurs ont le même format :
 
 | Code | `error` | Cas |
 |---|---|---|
-| 400 | `bad_request` | Corps JSON absent ou invalide, `page` ou filtre mal formé |
+| 400 | `bad_request` | Corps JSON absent ou invalide, `page` ou filtre mal formé, `date_debut` > `date_fin` |
 | 404 | `not_found` | Identifiant inexistant (ou client / hôtel référencé par une réservation inexistant) |
-| 409 | `conflict` | Réservation en double, email client déjà utilisé, hôtel (nom + ville) déjà existant, suppression d'un hôtel ou d'un client qui a des réservations (voir le [bug connu](#limites-connues)) |
-| 422 | `validation_error` | Champ obligatoire manquant, date invalide, `date_depart` ≤ `date_arrivee`, `nb_personnes` ≤ 0, statut inconnu, email invalide, `etoiles` hors de 0 à 5 |
+| 409 | `conflict` | Réservation en double, email client déjà utilisé, hôtel (nom + ville) déjà existant, suppression d'un hôtel ou d'un client qui a des réservations |
+| 422 | `validation_error` | Champ obligatoire manquant, date invalide, `date_depart` ≤ `date_arrivee`, `nb_personnes` ≤ 0, statut inconnu, email invalide, `etoiles` hors de 0 à 5, entier supérieur à 2147483647 |
 | 503 | `database_unavailable` | Base injoignable |
 
 Pour une réservation, les contrôles sont faits dans cet ordre : 400, puis 422, puis 404 (client, hôtel), puis 409 (doublon).
@@ -191,7 +198,7 @@ Un **doublon** est une réservation avec les mêmes `client_id`, `hotel_id`, `da
 
 ### Tests automatisés (pytest)
 
-**40 tests** : 8 tests unitaires de validation (sans base) et 32 tests sur la vraie API avec la vraie base PostgreSQL. Ces derniers sont ignorés (*skipped*) si la base est injoignable. Les tests créent leurs propres données et les suppriment.
+**52 tests** : 12 tests unitaires de validation (sans base) et 40 tests sur la vraie API avec la vraie base PostgreSQL. Ces derniers sont ignorés (*skipped*) si la base est injoignable. Les tests créent leurs propres données et les suppriment.
 
 ```bash
 docker compose up -d db              # la base doit tourner
@@ -199,13 +206,13 @@ pip install -r requirements.txt      # dans le .venv, voir l'installation manuel
 pytest -v
 ```
 
-Résultat attendu : `39 passed, 1 xfailed`. Le test marqué `xfail` correspond au [bug connu](#limites-connues) de la suppression d'un hôtel lié ; il passera automatiquement (`XPASS`) une fois le bug corrigé.
+Résultat attendu : `52 passed`.
 
 | Fichier | Ce qui est testé |
 |---|---|
-| `tests/test_reservation_schema.py` | Validation d'une réservation : statut par défaut, dates, champs manquants, `nb_personnes` |
-| `tests/test_reservations.py` | CRUD réservations, doublon 409, 404, 422, 400, pagination, filtres |
-| `tests/test_hotels_clients.py` | Santé, CRUD hôtels et clients, unicité (409), validation (422), suppression d'un hôtel lié (409), format d'erreur |
+| `tests/test_reservation_schema.py` | Validation d'une réservation : statut par défaut et mauvais type, dates, champs manquants, `nb_personnes`, identifiant hors limites |
+| `tests/test_reservations.py` | CRUD réservations, doublon 409, 404, 422, 400, pagination, filtres, période inversée |
+| `tests/test_hotels_clients.py` | Santé, CRUD hôtels et clients, unicité (409), validation (422), suppression d'un hôtel ou client lié (409), entiers et page hors limites, filtres, format d'erreur |
 
 ### Tests Postman
 
@@ -215,7 +222,7 @@ Résultat attendu : `39 passed, 1 xfailed`. Le test marqué `xfail` correspond a
 2. Sélectionner l'environnement « Hotel Reservation - local » en haut à droite.
 3. Clic droit sur la collection, *Run collection*, puis *Run*.
 
-Résultat attendu : **50 requêtes, 102 assertions**. Tant que le [bug connu](#limites-connues) n'est pas corrigé, les 4 assertions des deux requêtes « Supprimer l'hôtel utilisé (409) » et « Supprimer le client utilisé (409) » échouent (l'API répond 500) ; toutes les autres passent. La collection crée son propre hôtel, client et réservation, puis les supprime : on peut la relancer autant de fois que nécessaire.
+Résultat attendu : **50 requêtes, 102 assertions, toutes réussies**. La collection crée son propre hôtel, client et réservation, puis les supprime : on peut la relancer autant de fois que nécessaire.
 
 | Dossier | Contenu |
 |---|---|
@@ -292,13 +299,16 @@ Dans Docker, l'API reçoit `DATABASE_URL`, construite par `docker-compose.yml` �
 | Tous les tests d'API sont *skipped* | La base n'est pas joignable : `docker compose up -d db` |
 | NiFi ne répond pas | Attendre 2 minutes, vérifier `docker compose logs nifi` et la RAM disponible |
 | Impossible de se connecter à NiFi | `NIFI_PASSWORD` fait moins de 12 caractères |
+| NiFi répond `HTTP ERROR 400 Invalid SNI` | Utiliser https://localhost:8443/nifi et non `127.0.0.1` : le certificat de NiFi n'est valable que pour `localhost` |
+| `pip install` échoue sur `psycopg2-binary` | Version de Python trop récente : utiliser Python 3.12 à 3.14 |
 | `postgresql.jar` absent | `curl -L -o nifi/drivers/postgresql.jar https://jdbc.postgresql.org/download/postgresql-42.7.4.jar` |
 | Fedora / SELinux : `Permission denied` | Les volumes utilisent déjà l'option `:z` ; vérifier qu'elle n'a pas été retirée |
 
 ## Limites connues
 
-- **Bug connu (à corriger dans `app/errors.py`)** : supprimer un hôtel ou un client qui a des réservations renvoie `500 internal_error` au lieu de `409 conflict`. Avec `ON DELETE RESTRICT` (voir `init.sql`), PostgreSQL lève `RestrictViolation`, alors que le gestionnaire d'erreurs n'intercepte que `ForeignKeyViolation`. La suppression est bien refusée (aucune donnée perdue), seul le code HTTP est faux. Détecté par `tests/test_hotels_clients.py` et la collection Postman.
 - Le flux NiFi est lancé manuellement (« Run Once ») et n'écrit pas encore les lignes rejetées dans `nifi/data/rejets/` : elles sont abandonnées dans NiFi.
+- Le flux NiFi retrouve l'hôtel par son seul nom (pas par nom + ville) : deux hôtels homonymes dans deux villes seraient ambigus.
+- Les dates ne sont pas bornées : une réservation dans le passé est acceptée (utile pour charger un historique).
 - La disponibilité des chambres n'est pas contrôlée : seule une réservation strictement identique (même client, hôtel et dates) est refusée.
 - L'API n'a pas d'authentification.
 - Le mot de passe de la base doit être ressaisi dans NiFi après chaque import du flux (NiFi n'exporte jamais les valeurs sensibles).
