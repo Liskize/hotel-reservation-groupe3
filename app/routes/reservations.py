@@ -62,13 +62,16 @@ def _prepare(res_id=None):
 @bp.get("")
 def list_reservations():
     page, per_page = get_pagination()
+    date_debut, date_fin = _date_filter("date_debut"), _date_filter("date_fin")
+    if date_debut and date_fin and date_debut > date_fin:
+        raise ApiError(400, "bad_request", "date_debut doit être antérieure ou égale à date_fin")
     items, total = repo.list_reservations(
         page, per_page,
         hotel_id=_int_filter("hotel_id"),
         client_id=_int_filter("client_id"),
         statut=_statut_filter(),
-        date_debut=_date_filter("date_debut"),
-        date_fin=_date_filter("date_fin"),
+        date_debut=date_debut,
+        date_fin=date_fin,
     )
     return jsonify({"data": items, "page": page, "per_page": per_page, "total": total})
 

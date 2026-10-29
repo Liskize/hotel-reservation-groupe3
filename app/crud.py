@@ -7,6 +7,7 @@ from app.db import get_db
 from app.errors import ApiError, not_found, validation_error
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+MAX_INT = 2147483647  # INTEGER PostgreSQL
 
 
 def get_payload():
@@ -46,8 +47,8 @@ def validate(payload, fields):
             if "min" in spec and value < spec["min"]:
                 errors[name] = "doit etre >= %s" % spec["min"]
                 continue
-            if "max" in spec and value > spec["max"]:
-                errors[name] = "doit etre <= %s" % spec["max"]
+            if value > spec.get("max", MAX_INT):
+                errors[name] = "doit etre <= %s" % spec.get("max", MAX_INT)
                 continue
         clean[name] = value
     if errors:
@@ -64,6 +65,8 @@ def get_pagination():
         raise ApiError(400, "bad_request", "page et per_page doivent etre des entiers")
     if page < 1 or per_page < 1:
         raise ApiError(400, "bad_request", "page et per_page doivent etre >= 1")
+    if page > MAX_INT:
+        raise ApiError(400, "bad_request", "page doit etre <= %d" % MAX_INT)
     return page, min(per_page, cfg["MAX_PER_PAGE"])
 
 
