@@ -58,7 +58,7 @@ WITH donnees (
      'Bobo-Dioulasso', DATE '2026-11-12',
      DATE '2026-11-15', 2, 'EN_ATTENTE'),
 
-    ('judicael @example.com', 'Hotel Splendid',
+    ('judicael@example.com', 'Hotel Splendid',
      'Ouagadougou', DATE '2026-11-14',
      DATE '2026-11-17', 2, 'CONFIRMEE'),
 
@@ -72,10 +72,7 @@ WITH donnees (
 
     ('diane@example.com', 'Hotel Splendid',
      'Ouagadougou', DATE '2026-11-25',
-     DATE '2026-11-28', 2, 'CONFIRMEE'),
-     ('judicael@example.com', 'Hotel Splendid',
- 'Ouagadougou', DATE '2026-11-14',
- DATE '2026-11-17', 2, 'CONFIRMEE')
+     DATE '2026-11-28', 2, 'CONFIRMEE')
 )
 INSERT INTO reservations (
     client_id, hotel_id,
@@ -94,6 +91,8 @@ JOIN clients c ON c.email = d.email
 JOIN hotels h
     ON h.nom = d.hotel_nom
     AND h.ville = d.ville
+-- les identifiants suivent l'ordre chronologique des arrivees
+ORDER BY d.date_arrivee
 ON CONFLICT (
     client_id, hotel_id,
     date_arrivee, date_depart
