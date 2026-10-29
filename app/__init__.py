@@ -10,6 +10,8 @@ def create_app(config=None):
     app.config.from_object(Config)
     if config:
         app.config.update(config)
+    # Flask 3 ignore JSON_SORT_KEYS : garder l'ordre des colonnes dans les reponses
+    app.json.sort_keys = app.config["JSON_SORT_KEYS"]
 
     db.init_app(app)
     register_error_handlers(app)
