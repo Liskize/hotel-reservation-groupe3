@@ -14,9 +14,9 @@ def create_app(config=None):
     db.init_app(app)
     register_error_handlers(app)
 
-    from app.routes import clients, health, hotels
+    from app.routes import clients, health, hotels, reservations
     app.register_blueprint(health.bp)
     app.register_blueprint(hotels.bp)
     app.register_blueprint(clients.bp)
-    # Role 3 ajoutera ici : app.register_blueprint(reservations.bp)
+    app.register_blueprint(reservations.bp)
     return app
