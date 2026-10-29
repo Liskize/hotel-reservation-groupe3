@@ -1,0 +1,387 @@
+openapi: 3.0.3
+info:
+  title: API de réservations hôtelières (Groupe 3)
+  version: 1.0.0
+  description: |
+    API REST (Flask + PostgreSQL) pour gérer hôtels, clients et réservations.
+    Projet « Développement de composants » 2026, Groupe 3 SIE.
+
+    **Format d'erreur unique** : `{"error": "...", "message": "...", "details": {}}`.
+
+    | Code | `error` | Cas |
+    |---|---|---|
+    | 400 | `bad_request` | Corps JSON absent ou invalide, paramètre de requête mal formé |
+    | 404 | `not_found` | Identifiant inexistant (ou client / hôtel référencé inexistant) |
+    | 409 | `conflict` | Doublon (réservation, email client, hôtel nom + ville) ou suppression d'une ressource liée |
+    | 422 | `validation_error` | Champ obligatoire manquant, type ou valeur invalide, `date_depart` <= `date_arrivee` |
+    | 503 | `database_unavailable` | Base de données injoignable |
+
+    **Pagination** : `page` (défaut 1) et `per_page` (défaut 10, plafonné à 100 : une valeur plus grande est ramenée à 100).
+servers:
+  - url: http://127.0.0.1:5000/api/v1
+    description: Docker (docker compose) ou lancement local (python run.py)
+tags:
+  - name: health
+    description: Supervision
+  - name: hotels
+    description: Établissements hôteliers (nom + ville uniques)
+  - name: clients
+    description: Clients (email unique)
+  - name: reservations
+    description: Réservations, avec filtres et contrôle des doublons
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: État de l'API et de la base
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              example: {status: ok, database: up}
+        "503": {$ref: "#/components/responses/DatabaseUnavailable"}
+  /hotels:
+    get:
+      tags: [hotels]
+      summary: Liste paginée des hôtels
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PerPage"}]
+      responses:
+        "200":
+          description: Page d'hôtels
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HotelPage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+    post:
+      tags: [hotels]
+      summary: Créer un hôtel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HotelInput"}
+      responses:
+        "201":
+          description: Hôtel créé
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Hotel"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /hotels/{id}:
+    parameters: [{$ref: "#/components/parameters/Id"}]
+    get:
+      tags: [hotels]
+      summary: Lire un hôtel
+      responses:
+        "200":
+          description: Hôtel
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Hotel"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      tags: [hotels]
+      summary: Modifier un hôtel (remplacement complet)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HotelInput"}
+      responses:
+        "200":
+          description: Hôtel modifié
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Hotel"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      tags: [hotels]
+      summary: Supprimer un hôtel
+      responses:
+        "204": {description: Supprimé}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /clients:
+    get:
+      tags: [clients]
+      summary: Liste paginée des clients
+      parameters: [{$ref: "#/components/parameters/Page"}, {$ref: "#/components/parameters/PerPage"}]
+      responses:
+        "200":
+          description: Page de clients
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ClientPage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+    post:
+      tags: [clients]
+      summary: Créer un client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ClientInput"}
+      responses:
+        "201":
+          description: Client créé
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Client"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /clients/{id}:
+    parameters: [{$ref: "#/components/parameters/Id"}]
+    get:
+      tags: [clients]
+      summary: Lire un client
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Client"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      tags: [clients]
+      summary: Modifier un client (remplacement complet)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ClientInput"}
+      responses:
+        "200":
+          description: Client modifié
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Client"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      tags: [clients]
+      summary: Supprimer un client
+      responses:
+        "204": {description: Supprimé}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /reservations:
+    get:
+      tags: [reservations]
+      summary: Liste paginée et filtrée des réservations
+      parameters:
+        - {$ref: "#/components/parameters/Page"}
+        - {$ref: "#/components/parameters/PerPage"}
+        - {name: hotel_id, in: query, schema: {type: integer, minimum: 1}}
+        - {name: client_id, in: query, schema: {type: integer, minimum: 1}}
+        - {name: statut, in: query, schema: {$ref: "#/components/schemas/Statut"}}
+        - {name: date_debut, in: query, description: Arrivée >= cette date, schema: {type: string, format: date}}
+        - {name: date_fin, in: query, description: Départ <= cette date, schema: {type: string, format: date}}
+      responses:
+        "200":
+          description: Page de réservations
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ReservationPage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+    post:
+      tags: [reservations]
+      summary: Créer une réservation
+      description: Ordre des contrôles 400, 422, 404 (client ou hôtel), 409 (doublon).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReservationInput"}
+      responses:
+        "201":
+          description: Réservation créée
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Reservation"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /reservations/{id}:
+    parameters: [{$ref: "#/components/parameters/Id"}]
+    get:
+      tags: [reservations]
+      summary: Lire une réservation
+      responses:
+        "200":
+          description: Réservation
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Reservation"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    put:
+      tags: [reservations]
+      summary: Modifier une réservation (remplacement complet)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReservationInput"}
+      responses:
+        "200":
+          description: Réservation modifiée
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Reservation"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    delete:
+      tags: [reservations]
+      summary: Supprimer une réservation
+      responses:
+        "204": {description: Supprimée}
+        "404": {$ref: "#/components/responses/NotFound"}
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer, minimum: 1}
+    Page:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 1, default: 1}
+    PerPage:
+      name: per_page
+      in: query
+      description: Éléments par page ; une valeur supérieure à 100 est ramenée à 100.
+      schema: {type: integer, minimum: 1, default: 10}
+  responses:
+    BadRequest:
+      description: Requête mal formée (JSON absent, paramètre invalide)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example: {error: bad_request, message: "Corps JSON (objet) attendu", details: {}}
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example: {error: not_found, message: "Réservation 99999 introuvable", details: {}}
+    Conflict:
+      description: Doublon ou ressource liée
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            reservation_doublon:
+              value: {error: conflict, message: "Cette réservation existe déjà", details: {}}
+            email_doublon:
+              value: {error: conflict, message: "Doublon : la ressource existe deja", details: {constraint: clients_email_key}}
+            ressource_liee:
+              value: {error: conflict, message: "Operation impossible : des donnees liees existent (cle etrangere)", details: {}}
+    ValidationError:
+      description: Données invalides
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            dates:
+              value: {error: validation_error, message: "date_depart doit être après date_arrivee", details: {}}
+            champs_manquants:
+              value: {error: validation_error, message: "Champs obligatoires manquants", details: {missing: [date_arrivee, date_depart, nb_personnes]}}
+            champ_invalide:
+              value: {error: validation_error, message: "Donnees invalides", details: {email: "email invalide"}}
+    DatabaseUnavailable:
+      description: Base de données indisponible
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example: {error: database_unavailable, message: "Base de donnees indisponible", details: {}}
+  schemas:
+    Error:
+      type: object
+      required: [error, message, details]
+      properties:
+        error: {type: string}
+        message: {type: string}
+        details: {type: object, additionalProperties: true}
+    Statut:
+      type: string
+      enum: [EN_ATTENTE, CONFIRMEE, ANNULEE]
+    HotelInput:
+      type: object
+      required: [nom, ville, adresse, etoiles, nb_chambres]
+      properties:
+        nom: {type: string, maxLength: 150}
+        ville: {type: string, maxLength: 100}
+        adresse: {type: string, maxLength: 255}
+        etoiles: {type: integer, minimum: 0, maximum: 5}
+        nb_chambres: {type: integer, minimum: 1}
+    Hotel:
+      allOf:
+        - {$ref: "#/components/schemas/HotelInput"}
+        - type: object
+          properties:
+            id: {type: integer}
+    ClientInput:
+      type: object
+      required: [nom, prenom, email, telephone]
+      properties:
+        nom: {type: string, maxLength: 100}
+        prenom: {type: string, maxLength: 100}
+        email: {type: string, format: email}
+        telephone: {type: string, maxLength: 30}
+    Client:
+      allOf:
+        - {$ref: "#/components/schemas/ClientInput"}
+        - type: object
+          properties:
+            id: {type: integer}
+    ReservationInput:
+      type: object
+      required: [client_id, hotel_id, date_arrivee, date_depart, nb_personnes]
+      properties:
+        client_id: {type: integer, minimum: 1}
+        hotel_id: {type: integer, minimum: 1}
+        date_arrivee: {type: string, format: date, example: "2035-05-01"}
+        date_depart: {type: string, format: date, example: "2035-05-03", description: Strictement après date_arrivee}
+        nb_personnes: {type: integer, minimum: 1}
+        statut: {allOf: [{$ref: "#/components/schemas/Statut"}], default: EN_ATTENTE}
+    Reservation:
+      allOf:
+        - {$ref: "#/components/schemas/ReservationInput"}
+        - type: object
+          properties:
+            id: {type: integer}
+            statut: {$ref: "#/components/schemas/Statut"}
+            created_at: {type: string, format: date-time}
+    HotelPage:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Hotel"}}
+        page: {type: integer}
+        per_page: {type: integer}
+        total: {type: integer}
+    ClientPage:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Client"}}
+        page: {type: integer}
+        per_page: {type: integer}
+        total: {type: integer}
+    ReservationPage:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Reservation"}}
+        page: {type: integer}
+        per_page: {type: integer}
+        total: {type: integer}
