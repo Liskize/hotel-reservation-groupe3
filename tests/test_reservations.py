@@ -122,3 +122,67 @@ def test_suppression_204(client, payload):
                                  "date_depart": "2036-02-03"}).get_json()
     assert client.delete(f"{URL}/{res['id']}").status_code == 204
     assert client.get(f"{URL}/{res['id']}").status_code == 404
+
+
+def test_filtre_client(client, ids, created):
+    client_id, _ = ids
+    r = client.get(f"{URL}?client_id={client_id}")
+    body = r.get_json()
+
+    assert r.status_code == 200
+    assert all(item["client_id"] == client_id for item in body["data"])
+
+
+def test_filtre_statut(client, created):
+    r = client.get(f"{URL}?statut=EN_ATTENTE")
+    body = r.get_json()
+
+    assert r.status_code == 200
+    assert all(item["statut"] == "EN_ATTENTE" for item in body["data"])
+
+
+def test_filtre_date_debut(client, created):
+    r = client.get(f"{URL}?date_debut=2035-01-10")
+    body = r.get_json()
+
+    assert r.status_code == 200
+    assert all(item["date_arrivee"] >= "2035-01-10"
+               for item in body["data"])
+
+
+def test_filtre_date_fin(client, created):
+    r = client.get(f"{URL}?date_fin=2035-01-15")
+    body = r.get_json()
+
+    assert r.status_code == 200
+    assert all(item["date_depart"] <= "2035-01-15"
+               for item in body["data"])
+
+
+def test_filtre_client_et_hotel(client, ids, created):
+    client_id, hotel_id = ids
+    r = client.get(
+        f"{URL}?client_id={client_id}&hotel_id={hotel_id}"
+    )
+    body = r.get_json()
+
+    assert r.status_code == 200
+    assert all(
+        item["client_id"] == client_id
+        and item["hotel_id"] == hotel_id
+        for item in body["data"]
+    )
+
+
+def test_format_date_filtre_invalide_400(client):
+    r = client.get(f"{URL}?date_debut=10-01-2035")
+
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "bad_request"
+
+
+def test_identifiant_filtre_invalide_400(client):
+    r = client.get(f"{URL}?client_id=abc")
+
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "bad_request"
