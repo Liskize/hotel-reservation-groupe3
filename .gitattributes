@@ -1,0 +1,12 @@
+# Fins de ligne : LF pour tous les fichiers texte (évite les problèmes Windows/Linux)
+* text=auto eol=lf
+
+# Fichiers binaires : ne jamais les modifier
+*.jar binary
+*.pptx binary
+*.docx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.zip binary

@@ -16,8 +16,8 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro,z
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro,z
 
     healthcheck:
       test:
@@ -65,7 +65,8 @@ services:
       - "127.0.0.1:${NIFI_PORT:-8443}:8443"
 
     volumes:
-      - ./nifi/data:/opt/nifi/shared/data
+      - ./nifi/data:/opt/nifi/shared/data:z
+      - ./nifi/drivers:/opt/nifi/nifi-current/drivers:z
 
 volumes:
   postgres_data:
