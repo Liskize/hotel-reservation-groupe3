@@ -42,3 +42,16 @@ def test_champ_manquant():
 def test_nb_personnes_nul():
     with pytest.raises(ValidationError):
         validate_reservation({**BASE, "nb_personnes": 0})
+
+
+def test_identifiant_hors_limites():
+    with pytest.raises(ValidationError) as e:
+        validate_reservation({**BASE, "hotel_id": 2**31})
+    assert "hotel_id" in e.value.details
+
+
+@pytest.mark.parametrize("statut", [["CONFIRMEE"], {}, 1])
+def test_statut_mauvais_type(statut):
+    with pytest.raises(ValidationError) as e:
+        validate_reservation({**BASE, "statut": statut})
+    assert "statut" in e.value.details
