@@ -105,8 +105,6 @@ def test_hotel_inexistant_404(client):
     assert r.get_json()["error"] == "not_found"
 
 
-@pytest.mark.xfail(reason="Bug connu : ON DELETE RESTRICT lève RestrictViolation, non gérée par "
-                          "app/errors.py (500 au lieu de 409)", strict=False)
 def test_suppression_hotel_lie_409(client, hotel, client_cree):
     res = client.post("/api/v1/reservations", json={
         "client_id": client_cree["id"], "hotel_id": hotel["id"],
@@ -114,8 +112,35 @@ def test_suppression_hotel_lie_409(client, hotel, client_cree):
     try:
         r = client.delete(f"{HOTELS}/{hotel['id']}")
         assert r.status_code == 409
+        assert r.get_json()["error"] == "conflict"
+        r = client.delete(f"{CLIENTS}/{client_cree['id']}")
+        assert r.status_code == 409
     finally:
         client.delete(f"/api/v1/reservations/{res['id']}")
+
+
+def test_hotel_entier_hors_limites_422(client):
+    r = client.post(HOTELS, json={"nom": "X", "ville": "Y", "adresse": "Z",
+                                  "etoiles": 3, "nb_chambres": 99999999999})
+    assert r.status_code == 422
+    assert "nb_chambres" in r.get_json()["details"]
+
+
+def test_page_hors_limites_400(client):
+    assert client.get(f"{HOTELS}?page=99999999999999999999").status_code == 400
+
+
+def test_filtre_hotels_ville_et_etoiles(client, hotel):
+    body = client.get(f"{HOTELS}?ville=koudou&etoiles=3&per_page=100").get_json()
+    assert hotel["id"] in [h["id"] for h in body["data"]]
+    assert all("koudou" in h["ville"].lower() and h["etoiles"] == 3 for h in body["data"])
+    assert body["total"] == len(body["data"])
+
+
+def test_filtre_hotels_etoiles_invalide_400(client):
+    r = client.get(f"{HOTELS}?etoiles=abc")
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "bad_request"
 
 
 def test_suppression_hotel_204(client, hotel):
@@ -141,6 +166,11 @@ def test_client_email_doublon_409(client, client_cree):
     r = client.post(CLIENTS, json={k: v for k, v in client_cree.items() if k != "id"})
     assert r.status_code == 409
     assert r.get_json()["error"] == "conflict"
+
+
+def test_filtre_clients_email(client, client_cree):
+    body = client.get(f"{CLIENTS}?email={client_cree['email'].upper()}").get_json()
+    assert [c["id"] for c in body["data"]] == [client_cree["id"]]
 
 
 def test_client_email_invalide_422(client):

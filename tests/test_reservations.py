@@ -117,6 +117,20 @@ def test_statut_filtre_invalide_400(client):
     assert client.get(f"{URL}?statut=PAYEE").status_code == 400
 
 
+def test_periode_inversee_400(client):
+    assert client.get(f"{URL}?date_debut=2026-12-01&date_fin=2026-11-01").status_code == 400
+
+
+def test_statut_liste_422(client, payload):
+    r = client.post(URL, json={**payload, "statut": ["CONFIRMEE"]})
+    assert r.status_code == 422
+    assert "statut" in r.get_json()["details"]
+
+
+def test_nb_personnes_hors_limites_422(client, payload):
+    assert client.post(URL, json={**payload, "nb_personnes": 99999999999}).status_code == 422
+
+
 def test_suppression_204(client, payload):
     res = client.post(URL, json={**payload, "date_arrivee": "2036-02-01",
                                  "date_depart": "2036-02-03"}).get_json()
