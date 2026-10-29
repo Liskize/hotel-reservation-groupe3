@@ -22,7 +22,7 @@ docker compose logs -f nifi                           # attendre « NiFi has sta
 
 | Vérification | Commande | Attendu |
 |---|---|---|
-| API et base | `curl http://127.0.0.1:5000/api/v1/health` | `{"database":"up","status":"ok"}` |
+| API et base | `curl http://127.0.0.1:5000/api/v1/health` | `{"status":"ok","database":"up"}` |
 | NiFi | ouvrir https://localhost:8443/nifi | page de connexion NiFi |
 | Postman | importer `postman/*.json`, choisir l'environnement « Hotel Reservation - local » | collection visible |
 
@@ -138,7 +138,7 @@ Les requêtes de création enregistrent les identifiants (`hotelId`, `clientId`,
 ### 4.2 Exécution complète (Runner)
 
 Clic droit sur la collection > *Run collection* > *Run*.
-Attendu : **50 requêtes, 102 assertions**. Tant que le bug de la suppression d'un hôtel ou client lié n'est pas corrigé (voir « Limites connues » du README), 4 assertions du dossier 6 échouent (500 au lieu de 409). La collection supprime à la fin tout ce qu'elle a créé.
+Attendu : **50 requêtes, 102 assertions, toutes réussies** (dont la suppression d'un hôtel ou client lié, refusée en 409). La collection supprime à la fin tout ce qu'elle a créé.
 
 ### 4.3 Tests automatisés
 
@@ -146,7 +146,7 @@ Attendu : **50 requêtes, 102 assertions**. Tant que le bug de la suppression d'
 pytest -v
 ```
 
-Attendu : **39 passed, 1 xfailed** (le test `xfail` correspond au même bug connu).
+Attendu : **52 passed**.
 
 ---
 
