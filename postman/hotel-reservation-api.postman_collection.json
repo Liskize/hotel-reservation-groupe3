@@ -1,0 +1,1816 @@
+{
+  "info": {
+    "name": "Hotel Reservation API - Groupe 3",
+    "description": "Collection de tests de l'API de réservations hôtelières (Groupe 3 SIE).\n\nÀ lancer dans l'ordre avec le Runner : elle crée son propre hôtel, son client et sa réservation, teste les cas normaux, la pagination, les filtres et les erreurs 400/404/409/422, puis supprime tout ce qu'elle a créé. Elle peut donc être rejouée.\n\nVariable à vérifier : baseUrl (par défaut http://127.0.0.1:5000/api/v1).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Santé",
+      "description": "Vérifie que l'API et la base répondent.",
+      "item": [
+        {
+          "name": "Health (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"database up\", function () { pm.expect(pm.response.json().database).to.eql(\"up\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Hôtels",
+      "description": "CRUD hôtels : cas normaux puis erreurs 404, 409, 422.",
+      "item": [
+        {
+          "name": "Créer un hôtel (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 201\", function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"hotelId\", j.id);",
+                  "pm.collectionVariables.set(\"hotelNom\", j.nom);",
+                  "pm.test(\"id attribué\", function () { pm.expect(j.id).to.be.a(\"number\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Hotel Postman {{$timestamp}}\",\n  \"ville\": \"Ouagadougou\",\n  \"adresse\": \"Rue test\",\n  \"etoiles\": 3,\n  \"nb_chambres\": 20\n}"
+            }
+          }
+        },
+        {
+          "name": "Liste des hôtels paginée (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"pagination respectée\", function () { const j = pm.response.json(); pm.expect(j).to.have.keys(\"data\", \"page\", \"per_page\", \"total\"); pm.expect(j.per_page).to.eql(2); pm.expect(j.data.length).to.be.at.most(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hotels?page=1&per_page=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lire l'hôtel (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"bon nom\", function () { pm.expect(pm.response.json().nom).to.eql(pm.collectionVariables.get(\"hotelNom\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/{{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "{{hotelId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modifier l'hôtel (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"étoiles = 4\", function () { pm.expect(pm.response.json().etoiles).to.eql(4); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/{{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "{{hotelId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"{{hotelNom}}\",\n  \"ville\": \"Ouagadougou\",\n  \"adresse\": \"Avenue modifiée\",\n  \"etoiles\": 4,\n  \"nb_chambres\": 25\n}"
+            }
+          }
+        },
+        {
+          "name": "Hôtel en double nom + ville (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"error = conflict\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"conflict\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"{{hotelNom}}\",\n  \"ville\": \"Ouagadougou\",\n  \"adresse\": \"Autre adresse\",\n  \"etoiles\": 2,\n  \"nb_chambres\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "Hôtel incomplet (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });",
+                  "pm.test(\"details indique ville\", function () { pm.expect(pm.response.json().details).to.have.property(\"ville\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Incomplet\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Hôtel 6 étoiles (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hotels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"Trop etoile\",\n  \"ville\": \"Ouagadougou\",\n  \"adresse\": \"X\",\n  \"etoiles\": 6,\n  \"nb_chambres\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "Hôtel inexistant (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "999999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Clients",
+      "description": "CRUD clients : cas normaux, email en double (409), email invalide (422).",
+      "item": [
+        {
+          "name": "Créer un client (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 201\", function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"clientId\", j.id);",
+                  "pm.collectionVariables.set(\"clientEmail\", j.email);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"TEST\",\n  \"prenom\": \"Postman\",\n  \"email\": \"postman{{$timestamp}}@example.com\",\n  \"telephone\": \"70000099\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Liste des clients paginée (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"pagination respectée\", function () { const j = pm.response.json(); pm.expect(j).to.have.keys(\"data\", \"page\", \"per_page\", \"total\"); pm.expect(j.per_page).to.eql(2); pm.expect(j.data.length).to.be.at.most(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients?page=1&per_page=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lire le client (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"bon email\", function () { pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get(\"clientEmail\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modifier le client (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"téléphone modifié\", function () { pm.expect(pm.response.json().telephone).to.eql(\"76000099\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"TEST\",\n  \"prenom\": \"Postman modifié\",\n  \"email\": \"{{clientEmail}}\",\n  \"telephone\": \"76000099\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Email déjà utilisé (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"error = conflict\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"conflict\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"AUTRE\",\n  \"prenom\": \"Personne\",\n  \"email\": \"{{clientEmail}}\",\n  \"telephone\": \"70000100\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Email invalide (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });",
+                  "pm.test(\"details.email\", function () { pm.expect(pm.response.json().details.email).to.eql(\"email invalide\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nom\": \"A\",\n  \"prenom\": \"B\",\n  \"email\": \"pas-un-email\",\n  \"telephone\": \"70000000\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Client inexistant (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "999999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Réservations : cas normaux",
+      "description": "Création, lecture, pagination, filtres et modification.",
+      "item": [
+        {
+          "name": "Créer une réservation (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 201\", function () { pm.response.to.have.status(201); });",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set(\"resId\", j.id);",
+                  "pm.test(\"statut par défaut EN_ATTENTE\", function () { pm.expect(j.statut).to.eql(\"EN_ATTENTE\"); });",
+                  "pm.test(\"date au format ISO\", function () { pm.expect(j.date_arrivee).to.eql(\"2035-05-01\"); });",
+                  "pm.test(\"created_at renseigné\", function () { pm.expect(j.created_at).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-05-01\",\n  \"date_depart\": \"2035-05-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Lire la réservation (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"bon id\", function () { pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get(\"resId\"))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{resId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "{{resId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Liste paginée per_page=2 (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"pagination respectée\", function () { const j = pm.response.json(); pm.expect(j).to.have.keys(\"data\", \"page\", \"per_page\", \"total\"); pm.expect(j.per_page).to.eql(2); pm.expect(j.data.length).to.be.at.most(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?page=1&per_page=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Page 2 (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"page = 2\", function () { pm.expect(pm.response.json().page).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?page=2&per_page=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "per_page",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "per_page=500 plafonné à 100 (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"per_page = 100\", function () { pm.expect(pm.response.json().per_page).to.eql(100); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?per_page=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "500"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre hotel_id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"toutes de cet hôtel\", function () { const d = pm.response.json().data; pm.expect(d.length).to.be.at.least(1); d.forEach(r => pm.expect(String(r.hotel_id)).to.eql(String(pm.collectionVariables.get(\"hotelId\")))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?hotel_id={{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "hotel_id",
+                  "value": "{{hotelId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre client_id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"toutes de ce client\", function () { const d = pm.response.json().data; pm.expect(d.length).to.eql(1); pm.expect(String(d[0].client_id)).to.eql(String(pm.collectionVariables.get(\"clientId\"))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?client_id={{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre statut=EN_ATTENTE (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"toutes EN_ATTENTE\", function () { pm.response.json().data.forEach(r => pm.expect(r.statut).to.eql(\"EN_ATTENTE\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?statut=EN_ATTENTE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "statut",
+                  "value": "EN_ATTENTE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre période date_debut / date_fin (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"réservation trouvée dans la période\", function () { const d = pm.response.json().data; pm.expect(d.map(r => String(r.id))).to.include(String(pm.collectionVariables.get(\"resId\"))); d.forEach(r => { pm.expect(r.date_arrivee >= \"2035-04-30\").to.be.true; pm.expect(r.date_depart <= \"2035-05-04\").to.be.true; }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?date_debut=2035-04-30&date_fin=2035-05-04&hotel_id={{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "date_debut",
+                  "value": "2035-04-30"
+                },
+                {
+                  "key": "date_fin",
+                  "value": "2035-05-04"
+                },
+                {
+                  "key": "hotel_id",
+                  "value": "{{hotelId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Période sans résultat (200, liste vide)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"aucune réservation\", function () { pm.expect(pm.response.json().total).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?date_debut=2035-05-02&date_fin=2035-05-04&hotel_id={{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "date_debut",
+                  "value": "2035-05-02"
+                },
+                {
+                  "key": "date_fin",
+                  "value": "2035-05-04"
+                },
+                {
+                  "key": "hotel_id",
+                  "value": "{{hotelId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modifier la réservation (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"statut CONFIRMEE\", function () { pm.expect(pm.response.json().statut).to.eql(\"CONFIRMEE\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{resId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "{{resId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-05-01\",\n  \"date_depart\": \"2035-05-03\",\n  \"nb_personnes\": 2,\n  \"statut\": \"CONFIRMEE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Filtre statut=CONFIRMEE après modification (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"réservation confirmée\", function () { pm.expect(pm.response.json().total).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?statut=CONFIRMEE&client_id={{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "statut",
+                  "value": "CONFIRMEE"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Réservations : erreurs",
+      "description": "Doublon 409, validations 422, identifiants inexistants 404, requêtes mal formées 400.",
+      "item": [
+        {
+          "name": "Doublon (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"error = conflict\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"conflict\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-05-01\",\n  \"date_depart\": \"2035-05-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Départ avant arrivée (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });",
+                  "pm.test(\"message explicite\", function () { pm.expect(pm.response.json().message).to.include(\"date_depart\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-06-05\",\n  \"date_depart\": \"2035-06-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Départ = arrivée (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-06-05\",\n  \"date_depart\": \"2035-06-05\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Champs obligatoires manquants (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });",
+                  "pm.test(\"details.missing\", function () { pm.expect(pm.response.json().details.missing).to.include(\"date_arrivee\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "nb_personnes = 0 (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-07-01\",\n  \"date_depart\": \"2035-07-03\",\n  \"nb_personnes\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "Date mal formée (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"01/07/2035\",\n  \"date_depart\": \"2035-07-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Statut inconnu (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"error = validation_error\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"validation_error\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-07-01\",\n  \"date_depart\": \"2035-07-03\",\n  \"nb_personnes\": 2,\n  \"statut\": \"PAYEE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Client inexistant (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": 999999,\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-08-01\",\n  \"date_depart\": \"2035-08-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Hôtel inexistant (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": 999999,\n  \"date_arrivee\": \"2035-08-01\",\n  \"date_depart\": \"2035-08-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Réservation inexistante (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modifier une réservation inexistante (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": {{clientId}},\n  \"hotel_id\": {{hotelId}},\n  \"date_arrivee\": \"2035-05-01\",\n  \"date_depart\": \"2035-05-03\",\n  \"nb_personnes\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Corps non JSON (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"error = bad_request\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"bad_request\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "pas du json"
+            }
+          }
+        },
+        {
+          "name": "page=abc (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"error = bad_request\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"bad_request\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?page=abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "abc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre statut inconnu (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"error = bad_request\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"bad_request\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?statut=PAYEE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "statut",
+                  "value": "PAYEE"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filtre date mal formé (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"error = bad_request\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"bad_request\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?date_debut=01-05-2035",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "date_debut",
+                  "value": "01-05-2035"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Suppressions et nettoyage",
+      "description": "Suppressions interdites (409), puis nettoyage des données créées par la collection.",
+      "item": [
+        {
+          "name": "Supprimer l'hôtel utilisé (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"error = conflict\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"conflict\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/{{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "{{hotelId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supprimer le client utilisé (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"error = conflict\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"conflict\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supprimer la réservation (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{resId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "{{resId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Relire la réservation supprimée (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{resId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "{{resId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supprimer à nouveau (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"error = not_found\", function () { const j = pm.response.json(); pm.expect(j.error).to.eql(\"not_found\"); pm.expect(j).to.have.keys(\"error\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{resId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservations",
+                "{{resId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nettoyage : supprimer le client (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nettoyage : supprimer l'hôtel (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Statut 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hotels/{{hotelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hotels",
+                "{{hotelId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000/api/v1"
+    },
+    {
+      "key": "hotelId",
+      "value": ""
+    },
+    {
+      "key": "hotelNom",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "clientEmail",
+      "value": ""
+    },
+    {
+      "key": "resId",
+      "value": ""
+    }
+  ]
+}
