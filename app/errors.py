@@ -47,7 +47,9 @@ def register_error_handlers(app):
         c = e.diag.constraint_name or "contrainte d'unicite"
         return error_response(409, "conflict", "Doublon : la ressource existe deja", {"constraint": c})
 
+    # ON DELETE RESTRICT (init.sql) leve RestrictViolation, NO ACTION leve ForeignKeyViolation
     @app.errorhandler(pgerr.ForeignKeyViolation)
+    @app.errorhandler(pgerr.RestrictViolation)
     def handle_fk(e):
         return error_response(409, "conflict", "Operation impossible : des donnees liees existent (cle etrangere)")
 
@@ -61,6 +63,10 @@ def register_error_handlers(app):
         col = e.diag.column_name or "champ"
         return error_response(422, "validation_error", "Champ obligatoire manquant",
                               {col: "champ obligatoire"})
+
+    @app.errorhandler(pgerr.NumericValueOutOfRange)
+    def handle_out_of_range(e):
+        return error_response(422, "validation_error", "Valeur numerique hors limites")
 
     @app.errorhandler(psycopg2.OperationalError)
     def handle_db_down(e):
